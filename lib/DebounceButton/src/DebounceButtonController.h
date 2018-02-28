@@ -1,5 +1,5 @@
 /*
-  Called repeatedly to detect changes on pins debouncing signals
+  Manage buttons
 */
 
 #ifndef DebounceButtonController_h
@@ -9,12 +9,10 @@
 #ifndef UNIT_TEST
 #include "Arduino.h"
 #endif
-// #include <HashMap.h>
-
-const byte NUM_BUTTONS = 25;  //define the max size arrays
 
 // all the button functions
-enum buttonsTypes {
+enum ActionType {
+  NONE,
   SAS, 
   RCS,
   GEAR,
@@ -32,67 +30,47 @@ enum buttonsTypes {
   AG10
 };
 
-// pin to action struct
-struct PinToAction {
-  uint8_t pin;
-  buttonsTypes type;
-} ;
-
-// a buton instance to a type matching
+// a button instance to a type matching
 struct ButtonToAction {
   DebounceButton btn;
-  buttonsTypes type;
+  ActionType type;
 } ;
 
+// the controller
 class DebounceButtonController
 {
 public:
   inline DebounceButtonController() {};
 
-  inline void configure(const PinToAction *pta, uint8_t arraySize) 
+  // initialize the buttons, called from main::setup()
+  inline void init(ButtonToAction *bta, uint8_t arraySize) 
   {
-    for (uint8_t i = 0; i < arraySize; i++) {
-      setButton(pta[i].pin, pta[i].type);
+    _bta = bta;
+    numButtons = arraySize;
+    for (int i = 0; i<numButtons; i++) {
+      _bta[i].btn.init();
     }
-  };
-
-  inline void setButton(int pin, buttonsTypes btnType) 
-  {
-    _buttons[_buttonIndex] = {DebounceButton(), btnType};
-    _buttons[_buttonIndex].btn.init(pin);
-    pinMode(pin, INPUT_PULLUP);
-    _buttonIndex++;
-  };
-
+  }
+ 
+  // getter for numButtons initialized with
   inline uint8_t numberButtons() 
   {
-    return _buttonIndex;
+    return numButtons;
   }
 
-  inline ButtonToAction getButton(uint8_t btnIndex) 
-  {
-    return _buttons[btnIndex];
+  // return triggered actions, one per call
+  inline ActionType triggered() {
+    for (int i=0; i<numButtons; i++) {
+      if (_bta[i].btn.triggered()) {
+        return _bta[i].type;
+      }
+    }
+    return NONE;
   }
-
-  // inline ButtonToAction * toggled() 
-  // {
-  //   uint8_t toggledIndx = 0;
-  //   _toggledButtons[NUM_BUTTONS] = {};
-
-  //   for (int i = 0; i<_buttonIndex; i++) {
-  //     if (_buttons[i].btn.triggered()) {
-  //       _toggledButtons[toggledIndx] = _buttons[i];
-  //       toggledIndx++;
-  //     }
-  //   }
-
-  //   return _toggledButtons;
-  // }
-
 private:
-  ButtonToAction _buttons[NUM_BUTTONS] = {};
-  // ButtonToAction _toggledButtons[NUM_BUTTONS] = {};
-  uint8_t _buttonIndex = 0;
+  ButtonToAction *_bta;
+protected:
+  uint8_t numButtons = 0;
 };
 
 #endif

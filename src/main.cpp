@@ -16,58 +16,50 @@ https://www.arduino.cc/en/Reference/SPI
 
 **/
 
-#include <avr/pgmspace.h>
-
 // custom includes
 #include <DebounceButton.h>
 #include <DebounceButtonController.h>
 #include <FastShiftOut.h>
+#include <Arduino_FreeRTOS.h>
 
 // defines
 #define MOSI 11 // ---> Shift Register Serial Data Input / DS (14)
 #define SCK 13 // ---> Shift Register Clock Input / SHCP (11)
 #define SHIFTOUT1 0 // slave select ---> STCP (12)
 
-
 // Fast Shiftout
 FastShiftOut fo = FastShiftOut(SCK, MOSI);
 
-// Button collection
-// const uint8_t buttonCount = 10;
-// DebounceButton buttons[buttonCount];
-
-const PROGMEM PinToAction buttonPins[4] = {
-    {1, SAS},
-    {2, RCS},
-    {3, GEAR},
-    {4, LIGHT},
-}; // pins buttons are on
+// Button to action mapping
+const uint8_t const_numButtons = 4;
+ButtonToAction buttonAction[const_numButtons] = {
+    {DebounceButton(1), SAS},
+    {DebounceButton(2), RCS},
+    {DebounceButton(10), GEAR},
+    {DebounceButton(7), LIGHT},
+};
 
 // the button controller
 DebounceButtonController bc = DebounceButtonController();
 
+// blinky
+#define BLINK_LEDPIN 13
+#define BLINK_INTERVAL 1000
 long lastBlink = millis();
 bool ledState = HIGH;
-uint8_t ledPin = 13;
 
+// test harness
 #ifndef UNIT_TEST
 #include <Arduino.h>
 #include <SPI.h>
+#include <avr/pgmspace.h>
 
 // put your setup code here, to run once:
 void setup() {
-    pinMode(ledPin, OUTPUT);
+    pinMode(BLINK_LEDPIN, OUTPUT);
     Serial.begin(9600);
-
-
-    bc.configure(buttonPins, 4);
-    // Serial.println("Registering Buttons");
-    // for (int i = 0; i<buttonCount; i++)
-    // {
-    //     bc.setButton(buttonPins[i].pin, buttonPins[i].type);
-    // }
-
-    SPI.begin(); // start SPI
+    bc.init(buttonAction, const_numButtons);
+    SPI.begin();
 }
 
 // shift bytes out onto the bus, make sure to
@@ -78,41 +70,34 @@ void updateShiftOut(uint8_t value) {
   digitalWrite(SHIFTOUT1, HIGH);
 }
 
-// blink every 1000 millis
+// blink every BLINK_INTERVAL millis
 void blink()
 {
-  if (millis() - lastBlink > 1000) {
+  if (millis() - lastBlink > BLINK_INTERVAL) {
     ledState = !ledState;
     lastBlink = millis();
-    digitalWrite(ledPin, ledState);
+    digitalWrite(BLINK_LEDPIN, ledState);
   }
 }
 
-
+// main program loop
 void loop() {
 
+  // get one triggered action
+  ActionType action = bc.triggered();
 
-    for (int i = 0; i<bc.numberButtons(); i++)
-    {
-        
-      if (bc.getButton(i).btn.triggered())
-      {
-        Serial.print(i);
-        Serial.println(" triggered");
-      }
-    }
+  // match the action to control changes
+  switch(action) {
+    case NONE:
+      break;
+    case SAS:
+      // toggle sas
+      break;
+    default:
+      break;
+    };
 
-    // check all buttons
-    // for (int i = 0; i<buttonCount; i++)
-    // {
-    //   if (buttons[i].triggered())
-    //   {
-    //     Serial.print(i);
-    //     Serial.println(" triggered");
-    //   }
-    // }
-    // ButtonToAction triggered[NUM_BUTTONS] = &bc.toggled();
-
+    // call blink
     blink();
 }
 
