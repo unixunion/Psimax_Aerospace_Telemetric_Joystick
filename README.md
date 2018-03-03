@@ -1,4 +1,4 @@
-# Cheat Sheet
+# CPP Cheat Sheet
 
 ## Passing Structs to Function
 
